@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Draft Night — On the Clock</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <section id="idle-screen" class="screen">
+    <div class="idle-mark">FANTASY DRAFT</div>
+    <div class="idle-sub">
+      <span class="live-dot"></span>
+      waiting for the next pick
+    </div>
+  </section>
+
+  <section id="clock-screen" class="screen hidden">
+    <div class="eyebrow">
+      <span class="live-dot"></span>
+      <span class="eyebrow-text">ON THE CLOCK</span>
+    </div>
+
+    <div class="stage">
+      <div id="glow" class="glow"></div>
+      <img id="logo" class="logo" alt="" />
+    </div>
+
+    <h1 id="team-name" class="team-name"></h1>
+    <p id="owner-name" class="owner-name"></p>
+    <p id="pick-meta" class="pick-meta"></p>
+
+    <div id="on-deck" class="on-deck hidden">
+      <span class="on-deck-label">ON DECK</span>
+      <div id="on-deck-items" class="on-deck-items"></div>
+    </div>
+  </section>
+
+  <audio id="walkup-audio" preload="auto"></audio>
+  <canvas id="color-canvas" width="16" height="16" style="display:none"></canvas>
+
+  <script src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
