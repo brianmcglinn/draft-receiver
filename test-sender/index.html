@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Draft Receiver — Test Sender</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0B0E11;
+      color: #F5F5F0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      gap: 20px;
+      text-align: center;
+      padding: 0 20px;
+    }
+    google-cast-launcher {
+      width: 64px;
+      height: 64px;
+    }
+    #status { font-family: monospace; color: #9AA3AE; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <h1>Cast Test Sender</h1>
+  <p>Click the icon, pick your Chromecast, and the draft receiver should launch on the TV.<br>This page is just a throwaway testing tool — not part of the real app.</p>
+  <google-cast-launcher id="castbtn"></google-cast-launcher>
+  <div id="status">Waiting for Cast SDK…</div>
+
+  <script>
+    // Paste the App ID from the Cast SDK Developer Console here
+    const APP_ID = '4B914A7E';
+
+    const statusEl = document.getElementById('status');
+
+    window['__onGCastApiAvailable'] = function (isAvailable) {
+      if (!isAvailable) {
+        statusEl.textContent = 'Cast SDK failed to load.';
+        return;
+      }
+      if (APP_ID === 'YOUR_APP_ID_HERE') {
+        statusEl.textContent = '⚠️ Set APP_ID in this file first.';
+        return;
+      }
+
+      cast.framework.CastContext.getInstance().setOptions({
+        receiverApplicationId: APP_ID,
+        autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED,
+      });
+      statusEl.textContent = 'Ready — click the Cast icon above.';
+
+      cast.framework.CastContext.getInstance().addEventListener(
+        cast.framework.CastContextEventType.SESSION_STATE_CHANGED,
+        (event) => {
+          statusEl.textContent = 'Session state: ' + event.sessionState;
+        }
+      );
+    };
+  </script>
+  <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js"></script>
+</body>
+</html>
