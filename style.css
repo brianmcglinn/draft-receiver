@@ -67,6 +67,20 @@ html, body {
 }
 
 /* Clock screen */
+#clock-screen {
+  justify-content: flex-start;
+}
+
+.clock-main {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
 .eyebrow {
   position: absolute;
   top: 6vh;
@@ -136,11 +150,11 @@ html, body {
 }
 
 .on-deck {
-  position: absolute;
-  bottom: 5vh;
   display: flex;
   align-items: center;
   gap: 1.2em;
+  flex-shrink: 0;
+  padding-bottom: 4vh;
 }
 .on-deck-label {
   font-family: 'JetBrains Mono', monospace;
