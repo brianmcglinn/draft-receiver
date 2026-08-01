@@ -139,8 +139,8 @@ db.channel('intro_settings_changes')
   .subscribe();
 
 
+function extractGlowColor(imgEl) {
   try {
-    ctx.clearRect(0, 0, 16, 16);
     ctx.drawImage(imgEl, 0, 0, 16, 16);
     const { data } = ctx.getImageData(0, 0, 16, 16);
     let r = 0, g = 0, b = 0, n = 0;
