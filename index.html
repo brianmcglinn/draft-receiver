@@ -12,10 +12,11 @@
 <body>
 
   <section id="idle-screen" class="screen">
-    <div class="idle-mark">FANTASY DRAFT</div>
+    <img id="intro-logo" class="intro-logo hidden" alt="" />
+    <div id="idle-mark" class="idle-mark">FANTASY DRAFT</div>
     <div class="idle-sub">
       <span class="live-dot"></span>
-      waiting for the next pick
+      <span id="idle-subtext">waiting for the next pick</span>
     </div>
   </section>
 
@@ -43,6 +44,7 @@
   </section>
 
   <audio id="walkup-audio" preload="auto"></audio>
+  <audio id="intro-audio" preload="auto"></audio>
   <canvas id="color-canvas" width="16" height="16" style="display:none"></canvas>
   <button id="debug-play-btn" class="debug-play-btn hidden">▶ Test play current song</button>
   <div id="debug-panel" class="debug-panel hidden"></div>

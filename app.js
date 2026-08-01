@@ -40,6 +40,10 @@ log('Supabase client created for', CONFIG.SUPABASE_URL);
 
 const idleScreen = document.getElementById('idle-screen');
 const clockScreen = document.getElementById('clock-screen');
+const introLogoEl = document.getElementById('intro-logo');
+const idleMarkEl = document.getElementById('idle-mark');
+const idleSubtextEl = document.getElementById('idle-subtext');
+const introAudioEl = document.getElementById('intro-audio');
 const logoEl = document.getElementById('logo');
 const glowEl = document.getElementById('glow');
 const teamNameEl = document.getElementById('team-name');
@@ -71,7 +75,70 @@ if (DEBUG) {
   });
 }
 
-function extractGlowColor(imgEl) {
+// --- Intro screen (configurable idle screen: text, logo, playlist) ---
+let introTracks = [];
+let introTrackIndex = 0;
+let introPlaying = false;
+
+function playIntroTrack(index) {
+  if (!introTracks.length) return;
+  introTrackIndex = ((index % introTracks.length) + introTracks.length) % introTracks.length;
+  introAudioEl.src = introTracks[introTrackIndex].streamUrl;
+  introAudioEl.currentTime = 0;
+  introAudioEl.play()
+    .then(() => log('▶️ Intro track playing:', introTracks[introTrackIndex].title))
+    .catch(err => log('❌ Intro playback failed:', err.message));
+}
+
+introAudioEl.addEventListener('ended', () => {
+  if (introPlaying) playIntroTrack(introTrackIndex + 1);
+});
+
+function startIntroPlaylist() {
+  if (introPlaying || !introTracks.length) return;
+  introPlaying = true;
+  playIntroTrack(introTrackIndex);
+}
+
+function stopIntroPlaylist() {
+  introPlaying = false;
+  introAudioEl.pause();
+}
+
+function applyIntroSettings(row) {
+  if (!row) return;
+  idleMarkEl.textContent = row.heading_text || 'FANTASY DRAFT';
+  idleSubtextEl.textContent = row.subtext || 'waiting for the next pick';
+
+  if (row.logo_url) {
+    introLogoEl.src = row.logo_url;
+    introLogoEl.classList.remove('hidden');
+  } else {
+    introLogoEl.classList.add('hidden');
+  }
+
+  introTracks = Array.isArray(row.playlist_tracks) ? row.playlist_tracks : [];
+  introTrackIndex = 0;
+}
+
+async function loadIntroSettings() {
+  const { data, error } = await db.from('intro_settings').select('*').eq('id', 1).single();
+  if (error) {
+    log('⚠️ Failed to load intro_settings (using defaults):', error.message);
+    return;
+  }
+  applyIntroSettings(data);
+  log('✅ Intro settings loaded.');
+}
+
+db.channel('intro_settings_changes')
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'intro_settings' }, payload => {
+    log('📡 Intro settings updated.');
+    applyIntroSettings(payload.new);
+  })
+  .subscribe();
+
+
   try {
     ctx.clearRect(0, 0, 16, 16);
     ctx.drawImage(imgEl, 0, 0, 16, 16);
@@ -114,11 +181,13 @@ function renderState(row) {
     idleScreen.classList.remove('hidden');
     audioEl.pause();
     lastKey = null;
+    startIntroPlaylist();
     return;
   }
 
   idleScreen.classList.add('hidden');
   clockScreen.classList.remove('hidden');
+  stopIntroPlaylist();
 
   teamNameEl.textContent = row.team_name || '';
   ownerNameEl.textContent = row.owner_name || '';
@@ -173,3 +242,4 @@ db.channel('draft_state_changes')
   });
 
 loadInitialState();
+loadIntroSettings();

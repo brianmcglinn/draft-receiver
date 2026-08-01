@@ -32,6 +32,13 @@ html, body {
 .hidden { display: none; }
 
 /* Idle screen */
+.intro-logo {
+  max-width: 18vw;
+  max-height: 18vw;
+  object-fit: contain;
+  margin-bottom: 2vh;
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.5));
+}
 .idle-mark {
   font-family: 'Anton', sans-serif;
   font-size: 5vw;
