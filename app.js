@@ -1,0 +1,175 @@
+// --- On-page debug log ---
+// Visit the page with ?debug=1 to see everything below directly on screen —
+// no DevTools/console required. e.g. http://localhost:8000/?debug=1
+const DEBUG = new URLSearchParams(location.search).has('debug');
+const debugPanel = document.getElementById('debug-panel');
+if (DEBUG) debugPanel.classList.remove('hidden');
+
+function log(...args) {
+  console.log(...args);
+  if (DEBUG) {
+    const line = document.createElement('div');
+    line.textContent = args
+      .map(a => (typeof a === 'object' && a !== null ? JSON.stringify(a) : String(a)))
+      .join(' ');
+    debugPanel.appendChild(line);
+    debugPanel.scrollTop = debugPanel.scrollHeight;
+  }
+}
+
+log('Booting receiver…');
+
+if (CONFIG.SUPABASE_URL.includes('YOUR-PROJECT') || CONFIG.SUPABASE_ANON_KEY.includes('YOUR-ANON')) {
+  log('⚠️ config.js still has placeholder values — update SUPABASE_URL / SUPABASE_ANON_KEY');
+}
+
+// --- Cast receiver session ---
+// Registers this page as a valid Cast custom receiver and stops it from
+// timing out during the long idle gaps between draft picks.
+try {
+  const castContext = cast.framework.CastReceiverContext.getInstance();
+  castContext.start({ disableIdleTimeout: true });
+  log('Cast receiver context started.');
+} catch (e) {
+  log('Cast SDK not available (expected when testing in a plain browser tab):', e.message);
+}
+
+// --- Supabase ---
+const db = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+log('Supabase client created for', CONFIG.SUPABASE_URL);
+
+const idleScreen = document.getElementById('idle-screen');
+const clockScreen = document.getElementById('clock-screen');
+const logoEl = document.getElementById('logo');
+const glowEl = document.getElementById('glow');
+const teamNameEl = document.getElementById('team-name');
+const ownerNameEl = document.getElementById('owner-name');
+const pickMetaEl = document.getElementById('pick-meta');
+const onDeckWrap = document.getElementById('on-deck');
+const onDeckItems = document.getElementById('on-deck-items');
+const audioEl = document.getElementById('walkup-audio');
+const colorCanvas = document.getElementById('color-canvas');
+const ctx = colorCanvas.getContext('2d');
+
+let lastKey = null; // dedupe so unrelated row updates don't restart the song
+let lastKnownSongUrl = null; // used by the manual test-play button below
+
+const debugPlayBtn = document.getElementById('debug-play-btn');
+if (DEBUG) {
+  debugPlayBtn.classList.remove('hidden');
+  debugPlayBtn.addEventListener('click', () => {
+    if (!lastKnownSongUrl) {
+      log('No song URL known yet — trigger a draft_state update with a song_stream_url first.');
+      return;
+    }
+    log('Manual test play:', lastKnownSongUrl);
+    audioEl.src = lastKnownSongUrl;
+    audioEl.currentTime = 0;
+    audioEl.play()
+      .then(() => log('▶️ Manual playback started.'))
+      .catch(err => log('❌ Manual playback failed:', err.message));
+  });
+}
+
+function extractGlowColor(imgEl) {
+  try {
+    ctx.clearRect(0, 0, 16, 16);
+    ctx.drawImage(imgEl, 0, 0, 16, 16);
+    const { data } = ctx.getImageData(0, 0, 16, 16);
+    let r = 0, g = 0, b = 0, n = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] < 32) continue; // skip transparent pixels
+      r += data[i]; g += data[i + 1]; b += data[i + 2]; n++;
+    }
+    if (!n) return;
+    r = Math.round(r / n); g = Math.round(g / n); b = Math.round(b / n);
+    document.documentElement.style.setProperty('--glow-color', `${r}, ${g}, ${b}`);
+  } catch (e) {
+    // Most likely a CORS-blocked logo host tainting the canvas — falls back
+    // to the default amber glow, which is fine.
+    console.warn('Color extraction skipped:', e.message);
+  }
+}
+
+function renderOnDeck(list) {
+  if (!Array.isArray(list) || list.length === 0) {
+    onDeckWrap.classList.add('hidden');
+    return;
+  }
+  onDeckWrap.classList.remove('hidden');
+  onDeckItems.innerHTML = '';
+  list.slice(0, 4).forEach(item => {
+    const img = document.createElement('img');
+    img.src = item.logo_url || '';
+    img.alt = item.team_name || '';
+    onDeckItems.appendChild(img);
+  });
+}
+
+function renderState(row) {
+  log('renderState called. status =', row ? row.status : row);
+
+  if (!row || row.status !== 'on_the_clock') {
+    clockScreen.classList.add('hidden');
+    idleScreen.classList.remove('hidden');
+    audioEl.pause();
+    lastKey = null;
+    return;
+  }
+
+  idleScreen.classList.add('hidden');
+  clockScreen.classList.remove('hidden');
+
+  teamNameEl.textContent = row.team_name || '';
+  ownerNameEl.textContent = row.owner_name || '';
+  pickMetaEl.textContent = (row.round && row.pick_number)
+    ? `ROUND ${row.round} · PICK ${row.pick_number}`
+    : '';
+
+  if (logoEl.src !== row.logo_url) {
+    logoEl.crossOrigin = 'anonymous';
+    logoEl.src = row.logo_url || '';
+    logoEl.onload = () => extractGlowColor(logoEl);
+  }
+
+  renderOnDeck(row.on_deck);
+
+  if (row.song_stream_url) {
+    lastKnownSongUrl = row.song_stream_url;
+  }
+
+  // Only (re)start audio when this is genuinely a new pick
+  const key = `${row.owner_name}::${row.song_stream_url}`;
+  if (key !== lastKey) {
+    lastKey = key;
+    if (row.song_stream_url) {
+      audioEl.src = row.song_stream_url;
+      audioEl.currentTime = 0;
+      audioEl.play()
+        .then(() => log('▶️ Playback started.'))
+        .catch(err => log('❌ Playback failed:', err.message, '(often needs one click on the page first when testing in a plain browser tab)'));
+    }
+  }
+}
+
+async function loadInitialState() {
+  log('Fetching initial draft_state…');
+  const { data, error } = await db.from('draft_state').select('*').eq('id', 1).single();
+  if (error) {
+    log('❌ Failed to load draft_state:', error.message);
+    return;
+  }
+  log('✅ Initial state loaded.');
+  renderState(data);
+}
+
+db.channel('draft_state_changes')
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'draft_state' }, payload => {
+    log('📡 Realtime update received.');
+    renderState(payload.new);
+  })
+  .subscribe(status => {
+    log('Realtime subscription status:', status);
+  });
+
+loadInitialState();
