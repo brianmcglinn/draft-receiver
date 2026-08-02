@@ -183,6 +183,14 @@ function renderOnDeck(list) {
     img.src = item.logo_url || '';
     img.alt = item.team_name || '';
     onDeckItems.appendChild(img);
+
+    // Preload into the browser's cache now, so when this owner actually
+    // comes up next, the main logo swap is instant instead of showing
+    // the previous owner's logo while this one fetches.
+    if (item.logo_url) {
+      const preload = new Image();
+      preload.src = item.logo_url;
+    }
   });
 }
 
