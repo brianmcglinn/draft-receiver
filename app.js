@@ -52,9 +52,12 @@ log('Supabase client created for', CONFIG.SUPABASE_URL);
 const idleScreen = document.getElementById('idle-screen');
 const clockScreen = document.getElementById('clock-screen');
 const introLogosRow = document.getElementById('intro-logos-row');
-const introLogo1El = document.getElementById('intro-logo1');
-const introLogo2El = document.getElementById('intro-logo2');
-const introLogo3El = document.getElementById('intro-logo3');
+const introLogo1ImgEl = document.getElementById('intro-logo1-img');
+const introLogo1VideoEl = document.getElementById('intro-logo1-video');
+const introLogo2ImgEl = document.getElementById('intro-logo2-img');
+const introLogo2VideoEl = document.getElementById('intro-logo2-video');
+const introLogo3ImgEl = document.getElementById('intro-logo3-img');
+const introLogo3VideoEl = document.getElementById('intro-logo3-video');
 const idleMarkEl = document.getElementById('idle-mark');
 const idleSubheading1El = document.getElementById('idle-subheading1');
 const idleSubheading2El = document.getElementById('idle-subheading2');
@@ -132,13 +135,28 @@ function setIdleTextLine(el, text) {
   }
 }
 
-function setLogoSlot(imgEl, url) {
-  if (url) {
-    imgEl.src = url;
-    imgEl.classList.remove('hidden');
-  } else {
+function setLogoSlot(imgEl, videoEl, url, type) {
+  if (!url) {
     imgEl.classList.add('hidden');
     imgEl.src = '';
+    videoEl.classList.add('hidden');
+    videoEl.pause();
+    videoEl.src = '';
+    return;
+  }
+
+  if (type === 'video') {
+    imgEl.classList.add('hidden');
+    imgEl.src = '';
+    videoEl.src = url;
+    videoEl.classList.remove('hidden');
+    videoEl.play().catch(err => log('\u26a0\ufe0f Logo video autoplay blocked:', err.message));
+  } else {
+    videoEl.classList.add('hidden');
+    videoEl.pause();
+    videoEl.src = '';
+    imgEl.src = url;
+    imgEl.classList.remove('hidden');
   }
 }
 
@@ -149,9 +167,9 @@ function applyIntroSettings(row) {
   setIdleTextLine(idleSubheading2El, row.subheading2_text);
   idleSubtextEl.textContent = row.subtext || 'waiting for the next pick';
 
-  setLogoSlot(introLogo1El, row.logo1_url);
-  setLogoSlot(introLogo2El, row.logo_url);
-  setLogoSlot(introLogo3El, row.logo3_url);
+  setLogoSlot(introLogo1ImgEl, introLogo1VideoEl, row.logo1_url, row.logo1_type);
+  setLogoSlot(introLogo2ImgEl, introLogo2VideoEl, row.logo_url, row.logo_type);
+  setLogoSlot(introLogo3ImgEl, introLogo3VideoEl, row.logo3_url, row.logo3_type);
 
   if (row.logo1_url || row.logo_url || row.logo3_url) {
     introLogosRow.classList.remove('hidden');

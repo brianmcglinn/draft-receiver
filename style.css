@@ -39,23 +39,21 @@ html, body {
   gap: 3vw;
   margin-bottom: 2vh;
 }
+.intro-logo-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .intro-logo {
   object-fit: contain;
   filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.5));
-}
-.intro-logo-center {
   max-width: 18vw;
   max-height: 18vw;
-}
-.intro-logo-side {
-  max-width: 12vw;
-  max-height: 12vw;
-  opacity: 0.9;
 }
 .idle-subheading {
   font-family: 'Inter', sans-serif;
   font-weight: 600;
-  font-size: 1.6vw;
+  font-size: 2.8vw;
   color: var(--text-muted);
   margin-top: 0.6vh;
 }
