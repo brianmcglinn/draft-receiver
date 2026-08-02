@@ -163,9 +163,15 @@ function setLogoSlot(imgEl, videoEl, url, type) {
 function applyIntroSettings(row) {
   if (!row) return;
   idleMarkEl.textContent = row.heading_text || 'FANTASY DRAFT';
+  idleMarkEl.style.color = row.heading_color || '#9AA3AE';
+
   setIdleTextLine(idleSubheading1El, row.subheading1_text);
   setIdleTextLine(idleSubheading2El, row.subheading2_text);
+  idleSubheading1El.style.color = row.subheading_color || '#9AA3AE';
+  idleSubheading2El.style.color = row.subheading_color || '#9AA3AE';
+
   idleSubtextEl.textContent = row.subtext || 'waiting for the next pick';
+  idleSubtextEl.style.color = row.subtext_color || '#9AA3AE';
 
   setLogoSlot(introLogo1ImgEl, introLogo1VideoEl, row.logo1_url, row.logo1_type);
   setLogoSlot(introLogo2ImgEl, introLogo2VideoEl, row.logo_url, row.logo_type);
