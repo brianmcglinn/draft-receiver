@@ -52,9 +52,9 @@ log('Supabase client created for', CONFIG.SUPABASE_URL);
 const idleScreen = document.getElementById('idle-screen');
 const clockScreen = document.getElementById('clock-screen');
 const introLogosRow = document.getElementById('intro-logos-row');
-const introLogo1VideoEl = document.getElementById('intro-logo1-video');
+const introLogo1ImgEl = document.getElementById('intro-logo1-img');
 const introLogo2ImgEl = document.getElementById('intro-logo2-img');
-const introLogo3VideoEl = document.getElementById('intro-logo3-video');
+const introLogo3ImgEl = document.getElementById('intro-logo3-img');
 const idleMarkEl = document.getElementById('idle-mark');
 const idleSubheading1El = document.getElementById('idle-subheading1');
 const idleSubheading2El = document.getElementById('idle-subheading2');
@@ -132,19 +132,6 @@ function setIdleTextLine(el, text) {
   }
 }
 
-function setVideoSlot(videoEl, url, muted) {
-  if (url) {
-    videoEl.muted = muted !== false;
-    videoEl.src = url;
-    videoEl.classList.remove('hidden');
-    videoEl.play().catch(err => log('\u26a0\ufe0f Logo video autoplay blocked:', err.message));
-  } else {
-    videoEl.classList.add('hidden');
-    videoEl.pause();
-    videoEl.src = '';
-  }
-}
-
 function setImageSlot(imgEl, url) {
   if (url) {
     imgEl.src = url;
@@ -168,14 +155,9 @@ function applyIntroSettings(row) {
   idleSubtextEl.textContent = row.subtext || 'waiting for the next pick';
   idleSubtextEl.style.color = row.subtext_color || '#9AA3AE';
 
-  // TEMPORARY DIAGNOSTIC: forcing a known-good public test video here,
-  // bypassing whatever's actually saved, to isolate whether plain <video>
-  // rendering works in this receiver context at all. Remove this
-  // override once the test is done.
-  setVideoSlot(introLogo1VideoEl, 'https://placeholdervideo.dev/1280x720', true);
-  // setVideoSlot(introLogo1VideoEl, row.logo1_url, row.logo1_muted);
+  setImageSlot(introLogo1ImgEl, row.logo1_url);
   setImageSlot(introLogo2ImgEl, row.logo_url);
-  setVideoSlot(introLogo3VideoEl, row.logo3_url, row.logo3_muted);
+  setImageSlot(introLogo3ImgEl, row.logo3_url);
 
   if (row.logo1_url || row.logo_url || row.logo3_url) {
     introLogosRow.classList.remove('hidden');
