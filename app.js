@@ -189,6 +189,7 @@ function renderOnDeck(list) {
     // the previous owner's logo while this one fetches.
     if (item.logo_url) {
       const preload = new Image();
+      preload.crossOrigin = 'anonymous';
       preload.src = item.logo_url;
     }
   });
