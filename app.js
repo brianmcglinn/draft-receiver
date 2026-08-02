@@ -168,7 +168,12 @@ function applyIntroSettings(row) {
   idleSubtextEl.textContent = row.subtext || 'waiting for the next pick';
   idleSubtextEl.style.color = row.subtext_color || '#9AA3AE';
 
-  setVideoSlot(introLogo1VideoEl, row.logo1_url, row.logo1_muted);
+  // TEMPORARY DIAGNOSTIC: forcing a known-good public test video here,
+  // bypassing whatever's actually saved, to isolate whether plain <video>
+  // rendering works in this receiver context at all. Remove this
+  // override once the test is done.
+  setVideoSlot(introLogo1VideoEl, 'https://placeholdervideo.dev/1280x720', true);
+  // setVideoSlot(introLogo1VideoEl, row.logo1_url, row.logo1_muted);
   setImageSlot(introLogo2ImgEl, row.logo_url);
   setVideoSlot(introLogo3VideoEl, row.logo3_url, row.logo3_muted);
 
