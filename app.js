@@ -29,6 +29,17 @@ if (CONFIG.SUPABASE_URL.includes('YOUR-PROJECT') || CONFIG.SUPABASE_ANON_KEY.inc
 try {
   const castContext = cast.framework.CastReceiverContext.getInstance();
   castContext.start({ disableIdleTimeout: true });
+  castContext.addEventListener(cast.framework.system.EventType.SENDER_CONNECTED, () => {
+    log('📱 Sender (re)connected.');
+    // The receiver page persists across disconnect/reconnect (that's the
+    // whole point of disableIdleTimeout), so nothing else naturally
+    // re-triggers playback here unless draft_state also happens to
+    // change. Explicitly nudge the intro playlist to resume if we're
+    // still on the idle screen.
+    if (!idleScreen.classList.contains('hidden')) {
+      startIntroPlaylist();
+    }
+  });
   log('Cast receiver context started.');
 } catch (e) {
   log('Cast SDK not available (expected when testing in a plain browser tab):', e.message);
@@ -95,9 +106,11 @@ introAudioEl.addEventListener('ended', () => {
 });
 
 function startIntroPlaylist() {
-  if (introPlaying || !introTracks.length) return;
+  if (!introTracks.length) return;
   introPlaying = true;
-  playIntroTrack(introTrackIndex);
+  if (introAudioEl.paused) {
+    playIntroTrack(introTrackIndex);
+  }
 }
 
 function stopIntroPlaylist() {
