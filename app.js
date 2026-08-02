@@ -51,8 +51,13 @@ log('Supabase client created for', CONFIG.SUPABASE_URL);
 
 const idleScreen = document.getElementById('idle-screen');
 const clockScreen = document.getElementById('clock-screen');
-const introLogoEl = document.getElementById('intro-logo');
+const introLogosRow = document.getElementById('intro-logos-row');
+const introLogo1El = document.getElementById('intro-logo1');
+const introLogo2El = document.getElementById('intro-logo2');
+const introLogo3El = document.getElementById('intro-logo3');
 const idleMarkEl = document.getElementById('idle-mark');
+const idleSubheading1El = document.getElementById('idle-subheading1');
+const idleSubheading2El = document.getElementById('idle-subheading2');
 const idleSubtextEl = document.getElementById('idle-subtext');
 const introAudioEl = document.getElementById('intro-audio');
 const logoEl = document.getElementById('logo');
@@ -118,16 +123,40 @@ function stopIntroPlaylist() {
   introAudioEl.pause();
 }
 
+function setIdleTextLine(el, text) {
+  if (text) {
+    el.textContent = text;
+    el.classList.remove('hidden');
+  } else {
+    el.classList.add('hidden');
+  }
+}
+
+function setLogoSlot(imgEl, url) {
+  if (url) {
+    imgEl.src = url;
+    imgEl.classList.remove('hidden');
+  } else {
+    imgEl.classList.add('hidden');
+    imgEl.src = '';
+  }
+}
+
 function applyIntroSettings(row) {
   if (!row) return;
   idleMarkEl.textContent = row.heading_text || 'FANTASY DRAFT';
+  setIdleTextLine(idleSubheading1El, row.subheading1_text);
+  setIdleTextLine(idleSubheading2El, row.subheading2_text);
   idleSubtextEl.textContent = row.subtext || 'waiting for the next pick';
 
-  if (row.logo_url) {
-    introLogoEl.src = row.logo_url;
-    introLogoEl.classList.remove('hidden');
+  setLogoSlot(introLogo1El, row.logo1_url);
+  setLogoSlot(introLogo2El, row.logo_url);
+  setLogoSlot(introLogo3El, row.logo3_url);
+
+  if (row.logo1_url || row.logo_url || row.logo3_url) {
+    introLogosRow.classList.remove('hidden');
   } else {
-    introLogoEl.classList.add('hidden');
+    introLogosRow.classList.add('hidden');
   }
 
   introTracks = Array.isArray(row.playlist_tracks) ? row.playlist_tracks : [];
