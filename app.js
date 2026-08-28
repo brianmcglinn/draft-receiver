@@ -52,9 +52,8 @@ log('Supabase client created for', CONFIG.SUPABASE_URL);
 const idleScreen = document.getElementById('idle-screen');
 const clockScreen = document.getElementById('clock-screen');
 const introLogosRow = document.getElementById('intro-logos-row');
-const introLogo1ImgEl = document.getElementById('intro-logo1-img');
-const introLogo2ImgEl = document.getElementById('intro-logo2-img');
-const introLogo3ImgEl = document.getElementById('intro-logo3-img');
+const slideshowImgA = document.getElementById('slideshow-img-a');
+const slideshowImgB = document.getElementById('slideshow-img-b');
 const idleMarkEl = document.getElementById('idle-mark');
 const idleSubheading1El = document.getElementById('idle-subheading1');
 const idleSubheading2El = document.getElementById('idle-subheading2');
@@ -123,22 +122,52 @@ function stopIntroPlaylist() {
   introAudioEl.pause();
 }
 
+// --- Logo slideshow (any number of images, crossfading) ---
+let slideshowImages = [];
+let slideshowIndex = 0;
+let slideshowTimer = null;
+let slideshowShowingA = true;
+
+function showSlideshowImage(index) {
+  const url = slideshowImages[index]?.url;
+  if (!url) return;
+
+  const nextEl = slideshowShowingA ? slideshowImgB : slideshowImgA;
+  const currentEl = slideshowShowingA ? slideshowImgA : slideshowImgB;
+
+  // Load into the hidden layer first, then fade it in once it's actually
+  // ready — avoids a flash of a blank/broken image mid-transition.
+  nextEl.onload = () => {
+    nextEl.classList.add('active');
+    currentEl.classList.remove('active');
+    slideshowShowingA = !slideshowShowingA;
+  };
+  nextEl.src = url;
+}
+
+function startSlideshow() {
+  stopSlideshow();
+  if (!slideshowImages.length) return;
+  showSlideshowImage(0);
+  if (slideshowImages.length > 1) {
+    slideshowTimer = setInterval(() => {
+      slideshowIndex = (slideshowIndex + 1) % slideshowImages.length;
+      showSlideshowImage(slideshowIndex);
+    }, 5000);
+  }
+}
+
+function stopSlideshow() {
+  if (slideshowTimer) clearInterval(slideshowTimer);
+  slideshowTimer = null;
+}
+
 function setIdleTextLine(el, text) {
   if (text) {
     el.textContent = text;
     el.classList.remove('hidden');
   } else {
     el.classList.add('hidden');
-  }
-}
-
-function setImageSlot(imgEl, url) {
-  if (url) {
-    imgEl.src = url;
-    imgEl.classList.remove('hidden');
-  } else {
-    imgEl.classList.add('hidden');
-    imgEl.src = '';
   }
 }
 
@@ -155,19 +184,21 @@ function applyIntroSettings(row) {
   idleSubtextEl.textContent = row.subtext || 'waiting for the next pick';
   idleSubtextEl.style.color = row.subtext_color || '#9AA3AE';
 
-  setImageSlot(introLogo1ImgEl, row.logo1_url);
-  setImageSlot(introLogo2ImgEl, row.logo_url);
-  setImageSlot(introLogo3ImgEl, row.logo3_url);
+  slideshowImages = Array.isArray(row.logo_images) ? row.logo_images : [];
+  slideshowIndex = 0;
 
-  if (row.logo1_url || row.logo_url || row.logo3_url) {
+  if (slideshowImages.length > 0) {
     introLogosRow.classList.remove('hidden');
+    startSlideshow();
   } else {
     introLogosRow.classList.add('hidden');
+    stopSlideshow();
   }
 
   introTracks = Array.isArray(row.playlist_tracks) ? row.playlist_tracks : [];
   introTrackIndex = 0;
 }
+
 
 async function loadIntroSettings() {
   const { data, error } = await db.from('intro_settings').select('*').eq('id', 1).single();
