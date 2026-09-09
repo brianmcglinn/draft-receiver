@@ -46,7 +46,9 @@ try {
 }
 
 // --- Supabase ---
-const db = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+const db = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, {
+  db: { schema: 'draft_sender_app' },
+});
 log('Supabase client created for', CONFIG.SUPABASE_URL);
 
 const idleScreen = document.getElementById('idle-screen');
@@ -211,7 +213,7 @@ async function loadIntroSettings() {
 }
 
 db.channel('intro_settings_changes')
-  .on('postgres_changes', { event: '*', schema: 'public', table: 'intro_settings' }, payload => {
+  .on('postgres_changes', { event: '*', schema: 'draft_sender_app', table: 'intro_settings' }, payload => {
     log('📡 Intro settings updated.');
     applyIntroSettings(payload.new);
   })
@@ -321,7 +323,7 @@ async function loadInitialState() {
 }
 
 db.channel('draft_state_changes')
-  .on('postgres_changes', { event: '*', schema: 'public', table: 'draft_state' }, payload => {
+  .on('postgres_changes', { event: '*', schema: 'draft_sender_app', table: 'draft_state' }, payload => {
     log('📡 Realtime update received.');
     renderState(payload.new);
   })
