@@ -97,14 +97,134 @@ let introTracks = [];
 let introTrackIndex = 0;
 let introPlaying = false;
 
+// --- Local-vs-public Plex playback ---
+// The stored stream URLs always use the PUBLIC Plex address (draft-sender
+// always builds them that way, so they work wherever the draft happens).
+// But when this receiver happens to be on the SAME network as the real
+// Plex server (e.g. testing at home, or draft night at home), routing a
+// request to the public address can hit NAT loopback — your own router
+// can't route a request back in to your own public IP. So: derive a
+// local-network equivalent of each stream URL on the fly (the part-key/
+// token in the URL path don't depend on which server address is used).
+//
+// Reachability is checked ONCE at startup, not per-song. A network that
+// happens to share your home's subnet (common default ranges like
+// 192.168.1.x) can make a doomed connection attempt to the local address
+// hang for the full timeout instead of failing fast — fine to eat that
+// delay once while the receiver is booting, but not on every single pick.
+let localPlexBaseUrl = null;
+let localPlexReachable = false;
+const LOCAL_AUDIO_TIMEOUT_MS = 4000;
+
+async function loadLocalPlexBaseUrl() {
+  try {
+    const { data } = await db.from('plex_settings').select('plex_local_url, plex_token').eq('id', 1).single();
+    if (!data?.plex_local_url) return;
+    localPlexBaseUrl = data.plex_local_url;
+    log('Local Plex URL configured:', localPlexBaseUrl, '— checking reachability…');
+    localPlexReachable = await checkLocalReachability(localPlexBaseUrl, data.plex_token);
+    log(
+      localPlexReachable
+        ? 'Local Plex server is reachable on this network — will use it for playback.'
+        : 'Local Plex server is NOT reachable on this network — using the public URL for all playback this session.'
+    );
+  } catch (e) {
+    log('Couldn\u2019t check local Plex reachability (will just use public URLs):', e.message);
+  }
+}
+
+function checkLocalReachability(baseUrl, token) {
+  return new Promise(resolve => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      resolve(false);
+    }, LOCAL_AUDIO_TIMEOUT_MS);
+    fetch(`${baseUrl}/?X-Plex-Token=${token}`, { headers: { Accept: 'application/json' } })
+      .then(res => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(res.ok);
+      })
+      .catch(() => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(false);
+      });
+  });
+}
+
+function deriveLocalStreamUrl(publicStreamUrl) {
+  if (!localPlexBaseUrl || !localPlexReachable) return null;
+  try {
+    const parsed = new URL(publicStreamUrl);
+    return `${localPlexBaseUrl}${parsed.pathname}${parsed.search}`;
+  } catch {
+    return null;
+  }
+}
+
+// Tries the local-derived URL first (confirmed reachable at startup, but
+// kept behind a short per-song safety net in case one specific request
+// hiccups) and falls back to the public URL — used by both the intro
+// playlist and the walk-up song below, so the same logic doesn't need to
+// exist twice.
+function playAudioWithLocalFallback(audioElement, publicUrl, label) {
+  const localUrl = deriveLocalStreamUrl(publicUrl);
+  if (!localUrl) {
+    audioElement.src = publicUrl;
+    audioElement.currentTime = 0;
+    audioElement.play()
+      .then(() => log('▶️ Playing:', label))
+      .catch(err => log('❌ Playback failed:', err.message));
+    return;
+  }
+
+  let settled = false;
+  const cleanup = () => {
+    clearTimeout(timer);
+    audioElement.removeEventListener('playing', onPlaying);
+    audioElement.removeEventListener('error', onFail);
+  };
+  const onFail = () => {
+    if (settled) return;
+    settled = true;
+    cleanup();
+    log('Local audio didn\u2019t come through, falling back to public URL:', label);
+    audioElement.src = publicUrl;
+    audioElement.currentTime = 0;
+    audioElement.play()
+      .then(() => log('▶️ Playing (public fallback):', label))
+      .catch(err => log('❌ Playback failed:', err.message));
+  };
+  const onPlaying = () => {
+    if (settled) return;
+    settled = true;
+    cleanup();
+    log('▶️ Playing via local URL:', label);
+  };
+
+  const timer = setTimeout(onFail, LOCAL_AUDIO_TIMEOUT_MS);
+  audioElement.addEventListener('playing', onPlaying);
+  audioElement.addEventListener('error', onFail);
+
+  audioElement.src = localUrl;
+  audioElement.currentTime = 0;
+  audioElement.play().catch(() => {
+    // A rejected play() promise here isn't necessarily "local failed" (can
+    // also be a browser autoplay policy quirk in a plain tab) — the
+    // timeout/error/playing listeners above are the real source of truth.
+  });
+}
+
 function playIntroTrack(index) {
   if (!introTracks.length) return;
   introTrackIndex = ((index % introTracks.length) + introTracks.length) % introTracks.length;
-  introAudioEl.src = introTracks[introTrackIndex].streamUrl;
-  introAudioEl.currentTime = 0;
-  introAudioEl.play()
-    .then(() => log('▶️ Intro track playing:', introTracks[introTrackIndex].title))
-    .catch(err => log('❌ Intro playback failed:', err.message));
+  const track = introTracks[introTrackIndex];
+  playAudioWithLocalFallback(introAudioEl, track.streamUrl, track.title);
 }
 
 introAudioEl.addEventListener('ended', () => {
@@ -302,11 +422,7 @@ function renderState(row) {
   if (key !== lastKey) {
     lastKey = key;
     if (row.song_stream_url) {
-      audioEl.src = row.song_stream_url;
-      audioEl.currentTime = 0;
-      audioEl.play()
-        .then(() => log('▶️ Playback started.'))
-        .catch(err => log('❌ Playback failed:', err.message, '(often needs one click on the page first when testing in a plain browser tab)'));
+      playAudioWithLocalFallback(audioEl, row.song_stream_url, row.song_label || row.team_name);
     }
   }
 }
@@ -333,3 +449,4 @@ db.channel('draft_state_changes')
 
 loadInitialState();
 loadIntroSettings();
+loadLocalPlexBaseUrl();
